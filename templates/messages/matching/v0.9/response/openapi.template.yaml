@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: H2 Matching Response API
+  version: 1.0.0
+  summary: API specification for transmitting physical-nomination matching responses, including the matching result where applicable, between matching partners.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of matching responses for physical nominations in
+    the H2 market.
+
+    The response is sent by the counterpart matching partner that evaluated the request. It returns the counterpart's
+    matching data for the relevant point and account combination and, where applicable, the matching result and the
+    confirmed hourly quantities. Matching compares the nominations available on both sides: equal quantities can be
+    confirmed, different same-direction quantities are reduced according to the lesser rule, and missing or
+    directionally inconsistent counter-nominations can lead to a result of zero. The returned result is used by the
+    matching partners to determine and communicate the effective confirmed nomination quantities.
+x-h2-message:
+  id: response-matching
+  businessName: Matching Response
+  type: MATCHING
+  subType: Response
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: ResponseMatching
+  description: >-
+    HTTP operations for returning matching data and, where applicable, physical-nomination matching results to the
+    initiating matching partner.
+security:
+- mtls: []
+paths:
+  /api/v1/response-matching:
+    post:
+      tags:
+      - ResponseMatching
+      summary: Submit physical nomination matching response
+      description: >-
+        With this operation, the counterpart matching partner responds to a physical nomination matching request
+        from the initiating matching partner. The response returns the counterpart's matching data for the relevant
+        point, matching accounts, and time intervals and, where applicable, the matching result and the confirmed
+        quantities. If corresponding nominations agree, the matching quantity is confirmed; where same-direction
+        quantities differ, the lower quantity is relevant under the lesser rule, while a missing or directionally
+        inconsistent counterpart can result in a matching quantity of zero. The initiating matching partner uses the
+        result when confirming the effective nomination to the market participant.
+      operationId: submitResponseMatching
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/ResponseMatchingMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `responseMatchingSubmission`.
+      schema:
+        type: string
+        enum:
+        - responseMatchingSubmission
+      example: responseMatchingSubmission
+  requestBodies:
+    ResponseMatchingMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/responseMatching'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    responseMatching:
+      x-h2-generator:
+        inject: message-schema

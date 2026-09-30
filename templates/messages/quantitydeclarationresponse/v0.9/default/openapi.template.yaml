@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: H2 Quantity Declaration Response API
+  version: 1.0.0
+  summary: API specification for transmitting quantity declaration responses from hydrogen grid operators to balancing group responsible parties.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of quantity declaration responses in the H2 market.
+
+    The hydrogen grid operator (WNB) returns the business result of the quantity-declaration check. The response
+    represents the latest quantity submitted by the BKV, the quantity confirmed by the WNB, and the applicable booked
+    capacity. Each confirmed hourly value carries the applicable status and indicates whether the confirmed quantity is
+    a dispatch instruction. This allows the response to distinguish an unchanged confirmation of the requested quantity,
+    a reduction to the available capacity because the requested quantity exceeds the available or booked capacity, and a
+    reduction or interruption because of a supply bottleneck; if both a capacity exceedance and a supply bottleneck
+    apply, the supply bottleneck takes precedence.
+x-h2-message:
+  id: default-quantitydeclarationresponse
+  businessName: Quantity Declaration Response
+  type: QUANTITYDECLARATIONRESPONSE
+  subType: Default
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: QuantityDeclarationResponses
+  description: >-
+    HTTP operations for transmitting quantity declaration responses from hydrogen grid operators to balancing group
+    responsible parties.
+security:
+- mtls: []
+paths:
+  /api/v1/quantitydeclarationresponses:
+    post:
+      tags:
+      - QuantityDeclarationResponses
+      summary: Submit quantity declaration response
+      description: >-
+        With this operation, a hydrogen grid operator (WNB) transmits the business response to a quantity
+        declaration or adjustment for the relevant network point and balancing group responsible party. The response
+        contains the latest quantity submitted by the BKV, the quantity confirmed by the WNB and the applicable
+        booked capacity. For each confirmed hourly quantity, the response also indicates whether it is to be
+        observed as a dispatch instruction and provides the applicable business status: the requested quantity is
+        confirmed as submitted, the requested quantity exceeds the available or booked capacity, or the quantity was
+        reduced or interrupted because of a supply bottleneck.
+      operationId: submitQuantityDeclarationResponses
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/QuantityDeclarationResponseMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `quantityDeclarationResponseSubmission`.
+      schema:
+        type: string
+        enum:
+        - quantityDeclarationResponseSubmission
+      example: quantityDeclarationResponseSubmission
+  requestBodies:
+    QuantityDeclarationResponseMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/quantityDeclarationResponse'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    quantityDeclarationResponse:
+      x-h2-generator:
+        inject: message-schema

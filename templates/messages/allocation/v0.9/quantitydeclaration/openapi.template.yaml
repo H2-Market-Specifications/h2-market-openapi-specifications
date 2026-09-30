@@ -1,0 +1,160 @@
+openapi: 3.1.0
+info:
+  title: H2 Quantity Declaration Allocation API
+  version: 1.0.0
+  summary: API specification for transmitting network-point-specific quantity-declaration allocations from hydrogen grid operators to the hydrogen market area manager and from the hydrogen market area manager to the balancing group responsible party.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of quantity-declaration allocations in the H2
+    market, both from hydrogen grid operators to the hydrogen market area manager (WMGV) and from the hydrogen market
+    area manager to the balancing group responsible party (BKV).
+
+    Hydrogen grid operator to hydrogen market area manager: for points that are not subject to nomination, the hydrogen
+    grid operator forwards the latest hourly quantity declaration or adjustment submitted by the balancing group
+    responsible party for the relevant balancing group and network point. The quantity confirmed by the hydrogen grid
+    operator is not transmitted in place of the BKV-submitted quantity for this purpose. The hydrogen market area
+    manager uses these values as forecast input for continuous balancing and the overall network status. If a
+    preliminary measured value required for balancing is missing, the applicable quantity declaration can also be used
+    in the replacement-value procedure defined for continuous balancing.
+
+    Hydrogen market area manager to balancing group responsible party: the hydrogen market area manager provides the
+    balancing group responsible party with the network-point-specific quantity-declaration allocations applied during
+    the balancing process, per balancing group, network point, and flow direction in hourly or quarter-hourly
+    granularity.
+x-h2-message:
+  id: quantitydeclaration-allocation
+  businessName: Quantity Declaration Allocation
+  type: ALLOCATION
+  subType: QuantityDeclaration
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: QuantityDeclarationAllocations
+  description: >-
+    HTTP operations for transmitting quantity-declaration allocations from hydrogen grid operators to the hydrogen
+    market area manager and from the hydrogen market area manager to the balancing group responsible party.
+security:
+- mtls: []
+paths:
+  /api/v1/quantitydeclaration-allocations:
+    post:
+      tags:
+      - QuantityDeclarationAllocations
+      summary: Submit quantity declaration allocations
+      description: >-
+        With this operation, quantity-declaration allocations are transmitted in one of two data flows. In the first
+        flow, a hydrogen grid operator (WNB) transmits the latest quantity declarations and subsequent adjustments
+        submitted by the balancing group responsible party to the hydrogen market area manager (WMGV) for points
+        that are not subject to nomination. The hourly quantities are provided per network point, balancing group,
+        and flow direction. For this transmission, the latest quantity submitted or adjusted by the BKV is decisive;
+        the quantity confirmed by the WNB is not substituted for it. The hydrogen market area manager uses these
+        values for balancing and overall network status forecasts and, where a required preliminary measurement is
+        unavailable, as input for the defined replacement-value procedure. In the second flow, the hydrogen market
+        area manager (WMGV) transmits the network-point-specific quantity-declaration allocations applied during the
+        balancing process to the balancing group responsible party (BKV) in hourly or quarter-hourly granularity.
+      operationId: submitQuantityDeclarationAllocations
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/QuantityDeclarationAllocationMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `quantitydeclarationAllocationSubmission`.
+      schema:
+        type: string
+        enum:
+        - quantitydeclarationAllocationSubmission
+      example: quantitydeclarationAllocationSubmission
+  requestBodies:
+    QuantityDeclarationAllocationMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/quantityDeclarationAllocation'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    quantityDeclarationAllocation:
+      x-h2-generator:
+        inject: message-schema

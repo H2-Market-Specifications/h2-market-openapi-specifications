@@ -1,0 +1,153 @@
+openapi: 3.1.0
+info:
+  title: H2 Preliminary Measurements API
+  version: 1.0.0
+  summary: API specification for transmitting quarter-hourly preliminary measurements from hydrogen grid operators to the hydrogen market area manager for continuous balancing.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of preliminary measurements from hydrogen grid
+    operators to the hydrogen market area manager (WMGV) in the H2 market.
+
+    Preliminary measurements are quarter-hourly hydrogen injection or withdrawal quantities used during continuous
+    balancing at points allocated according to measured values. The hydrogen grid operator determines the
+    network-point-specific energy quantities, performs automated plausibility checks, and transmits the values no later
+    than six minutes after the end of each quarter-hour. Each message contains, in ascending order, the values for all
+    quarter-hours of the current hour that have already elapsed, allowing corrected values within the current balancing
+    period to be carried forward in the next transmission. After receipt, the hydrogen market area manager assigns the
+    values to the relevant balancing group and uses them in the calculation of balancing-group balances and the overall
+    network status.
+x-h2-message:
+  id: preliminary-measurement
+  businessName: Preliminary Measurements
+  type: MEASUREMENT
+  subType: Preliminary
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: PreliminaryMeasurements
+  description: >-
+    HTTP operations for submitting preliminary measurement time series used in continuous balancing.
+security:
+- mtls: []
+paths:
+  /api/v1/preliminary-measurements:
+    post:
+      tags:
+      - PreliminaryMeasurements
+      summary: Submit preliminary measurements
+      description: >-
+        With this operation, a hydrogen grid operator (WNB) transmits preliminary hydrogen measurements to the
+        hydrogen market area manager (WMGV) for measured points that are not subject to nomination. The values
+        represent quarter-hourly injection or withdrawal quantities and must arrive at the hydrogen market area
+        manager no later than six minutes after the end of the respective quarter-hour. Each transmission contains,
+        in ascending order, all already elapsed quarter-hours of the current hour so that corrections within the
+        current hourly balancing period can be reflected in a subsequent message. The hydrogen grid operator
+        performs automated plausibility checks and can replace obviously erroneous values with suitable preliminary
+        replacement values. The hydrogen market area manager allocates the measurements to the relevant balancing
+        groups and uses them for continuous balancing and the overall network status.
+      operationId: submitPreliminaryMeasurements
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          $ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          $ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          $ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          $ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/PreliminaryMeasurementMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `preliminaryMeasurementSubmission`.
+      schema:
+        type: string
+        enum:
+        - preliminaryMeasurementSubmission
+      example: preliminaryMeasurementSubmission
+  requestBodies:
+    PreliminaryMeasurementMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/preliminaryMeasurement'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    preliminaryMeasurement:
+      x-h2-generator:
+        inject: message-schema

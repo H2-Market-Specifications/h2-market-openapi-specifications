@@ -1,0 +1,147 @@
+openapi: 3.1.0
+info:
+  title: H2 Matching Request API
+  version: 1.0.0
+  summary: API specification for transmitting physical-nomination matching requests between matching partners.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of a matching request between matching partners for
+    physical nominations in the H2 market.
+
+    Matching is used to compare the nomination information available on both sides of a point subject to nomination. The
+    initiating matching partner sends the relevant account references, direction, and hourly quantities to the
+    corresponding matching partner. The receiving party compares the data with the corresponding nomination and
+    determines a matching result for each interval. The result is returned through the Matching Response message and
+    forms part of the process used to confirm the effective nomination quantities.
+x-h2-message:
+  id: request-matching
+  businessName: Matching Request
+  type: MATCHING
+  subType: Request
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: RequestMatching
+  description: >-
+    HTTP operations for requesting the matching of physical nomination quantities between matching partners.
+security:
+- mtls: []
+paths:
+  /api/v1/matching-requests:
+    post:
+      tags:
+      - RequestMatching
+      summary: Submit physical nomination matching request
+      description: >-
+        With this operation, the initiating matching partner sends a matching request for a physical nomination to
+        the corresponding matching partner. The request identifies the relevant point, the participating
+        balancing-group or matching accounts, the flow direction, and the hourly nomination quantities to be
+        compared with the corresponding nomination on the other side. The receiving matching partner performs the
+        matching for the requested periods and returns the result in a Matching Response. The matching result is
+        subsequently used to determine the quantities that can be confirmed to the nominating market participants.
+      operationId: submitRequestMatching
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/RequestMatchingMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `requestMatchingSubmission`.
+      schema:
+        type: string
+        enum:
+        - requestMatchingSubmission
+      example: requestMatchingSubmission
+  requestBodies:
+    RequestMatchingMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/requestMatching'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    requestMatching:
+      x-h2-generator:
+        inject: message-schema

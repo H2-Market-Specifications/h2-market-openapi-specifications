@@ -1,0 +1,151 @@
+openapi: 3.1.0
+info:
+  title: H2 Continuous Balancing API
+  version: 1.0.0
+  summary: API specification for transmitting continuous balancing figures from the hydrogen market area manager to the balancing group responsible party.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of balancing figures calculated by the hydrogen
+    market area manager (WMGV) as part of continuous balancing in the H2 market.
+
+    A message refers to one balancing group (internal account) and its cluster and contains balancing-number time series
+    for the balancing-group balance (BGBalance, entry minus exit per interval) and the cumulative balancing-group
+    balance (BGBalanceCumulative). The overall network status (OverallNetworkStatus) of the corresponding cluster can
+    additionally be provided to the BKV as part of the continuous-balancing data. Where the receiving BKV is the
+    equalizing BKV in a cooperative balancing relationship, the cumulative balance of the balancing group being balanced
+    can additionally be transmitted as BGBalanceCumulativeExternal. Values are distinguished by the quality defined in
+    the message schema and are updated according to the continuous-balancing cycle.
+x-h2-message:
+  id: continuousbalancing-balancing
+  businessName: Continuous Balancing
+  type: BALANCING
+  subType: ContinuousBalancing
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: ContinuousBalancing
+  description: >-
+    HTTP operations for transmitting balancing figures calculated in the continuous balancing process.
+security:
+- mtls: []
+paths:
+  /api/v1/continuous-balancings:
+    post:
+      tags:
+      - ContinuousBalancing
+      summary: Submit continuous balancing figures
+      description: >-
+        With this operation, the hydrogen market area manager (WMGV) transmits the balancing figures calculated in
+        the continuous balancing process to the balancing group responsible party. The message contains the
+        balancing-group balance and the cumulative balancing-group balance for the relevant balancing group and can
+        additionally provide the overall network status of the corresponding cluster. If the receiving BKV acts as
+        the equalizing BKV in a cooperative balancing relationship, the cumulative balance of the balancing group
+        being balanced is additionally provided. Preliminary and forecast values are updated in the
+        continuous-balancing cycle, while values for a completed balancing period are closed according to their
+        stated quality.
+      operationId: submitContinuousBalancing
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/ContinuousBalancingMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `continuousBalancingSubmission`.
+      schema:
+        type: string
+        enum:
+        - continuousBalancingSubmission
+      example: continuousBalancingSubmission
+  requestBodies:
+    ContinuousBalancingMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/continuousBalancing'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    continuousBalancing:
+      x-h2-generator:
+        inject: message-schema

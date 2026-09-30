@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: H2 Final Measurements API
+  version: 1.0.0
+  summary: API specification for transmitting final, settlement-relevant hourly measurements from hydrogen grid operators for final allocation and settlement.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of final measurements in the H2 market.
+
+    Final measurements are the settlement-relevant hourly hydrogen injection and withdrawal quantities determined by the
+    hydrogen grid operator (WNB) for measured points that are not subject to nomination. Before transmission, the
+    hydrogen grid operator performs the required plausibility checks and forms replacement values where a measurement is
+    not suitable for settlement. The settlement-relevant hydrogen share is included in the determination of the final
+    quantity. The values are transmitted via the Data Hub to the hydrogen market area manager (WMGV), which allocates
+    them to the applicable balancing groups and uses them for the final balancing-group result, and to the transport
+    customer where required for settlement. The applicable deadline is M+10 working days after the end of the delivery
+    month.
+x-h2-message:
+  id: final-measurement
+  businessName: Final Measurements
+  type: MEASUREMENT
+  subType: Final
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: FinalMeasurements
+  description: >-
+    HTTP operations for submitting final measurement time series in the H2 market.
+security:
+- mtls: []
+paths:
+  /api/v1/final-measurements:
+    post:
+      tags:
+      - FinalMeasurements
+      summary: Submit final measurements
+      description: >-
+        With this operation, a hydrogen grid operator (WNB) transmits final, settlement-relevant measurements for
+        measured points that are not subject to nomination. The values represent final hourly hydrogen injection or
+        withdrawal quantities after plausibility checks and, where necessary, replacement-value formation; the
+        settlement-relevant hydrogen share is taken into account. In the defined process, the data are provided to
+        the hydrogen market area manager (WMGV) for final allocation and balancing-group settlement and to the
+        transport customer where required for customer settlement. Final measurements must be provided no later than
+        M+10 working days.
+      operationId: submitFinalMeasurements
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/FinalMeasurementMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `finalMeasurementSubmission`.
+      schema:
+        type: string
+        enum:
+        - finalMeasurementSubmission
+      example: finalMeasurementSubmission
+  requestBodies:
+    FinalMeasurementMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/finalMeasurement'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    finalMeasurement:
+      x-h2-generator:
+        inject: message-schema

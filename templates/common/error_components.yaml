@@ -1,0 +1,498 @@
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: Mutual TLS authentication between communicating market partners.
+
+  parameters:
+    H2TransactionId:
+      name: H2-Transaction-Id
+      in: header
+      required: true
+      description: >-
+        Unique identifier of this HTTP request on the current communication leg, as UUID version 7. A new value is
+        generated for every request, including every retry.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      example: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+    H2InitialTransactionId:
+      name: H2-Initial-Transaction-Id
+      in: header
+      required: false
+      description: >-
+        Sent only with a retry: the H2-Transaction-Id of the first request of the same communication leg, as UUID
+        version 7. A request that is not a retry must not contain this header. On a retry, this value is the effective
+        transaction ID of the request.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      example: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+    H2MessageSender:
+      name: H2-Message-Sender
+      in: header
+      required: true
+      description: Market partner identifier of the sending market partner.
+      schema:
+        type: string
+        pattern: '^\d{13}$'
+      example: '9700123456789'
+    H2MessageReceiver:
+      name: H2-Message-Receiver
+      in: header
+      required: true
+      description: >-
+        Market partner identifier of the recipient of the current communication leg, for example the Data Hub on the
+        leg from a market partner to the Data Hub. This is not necessarily the final business recipient of the message.
+      schema:
+        type: string
+        pattern: '^\d{13}$'
+      example: '9700987654321'
+    ReferenceNumber:
+      name: referenceNumber
+      in: path
+      required: true
+      description: Business reference number of the market message.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: '^[A-Za-z0-9._-]+$'
+      example: ABC123456789
+
+  headers:
+    H2TransactionId:
+      description: >-
+        Newly generated identifier of this response, as UUID version 7. Present in every response with a JSON body.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    H2ReferenceId:
+      description: >-
+        Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise its
+        H2-Transaction-Id. Present in every response with a JSON body.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    H2APIVersion:
+      description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+      schema:
+        type: string
+        pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+      example: 1.0.0
+    H2ResponseOrigin:
+      description: Origin of the response from the perspective of the interface.
+      schema:
+        type: string
+        enum: [Gateway, TargetSystem]
+    RetryAfter:
+      description: Recommended waiting time before retrying the request.
+      schema:
+        type: string
+    Allow:
+      description: HTTP methods permitted for the requested resource.
+      schema:
+        type: string
+      example: POST
+
+  schemas:
+    SuccessResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        referenceNumber:
+          type: string
+        responseOrigin:
+          type: string
+          enum: [TargetSystem]
+        messageType:
+          type: string
+          enum: ["${x-h2-message.type}"]
+        messageSubType:
+          type: string
+          enum: ["${x-h2-message.subType}"]
+        messageVersion:
+          type: string
+          enum: ["${x-h2-message.messageVersion}"]
+        processedAt:
+          type: string
+          format: date-time
+      required: [status, responseOrigin]
+
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      description: >-
+        Error response for technical or business errors. `responseOrigin` and `errors` are extensions of this
+        specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+          enum:
+          - BAD_REQUEST
+          - UNAUTHORIZED
+          - NOT_AUTHORIZED
+          - ROUTE_NOT_FOUND
+          - METHOD_NOT_ALLOWED
+          - MESSAGE_CONFLICT
+          - UNSUPPORTED_MEDIA_TYPE
+          - MESSAGE_VALIDATION_FAILED
+          - TOO_MANY_REQUESTS
+          - INTERNAL_ERROR
+          - BAD_GATEWAY
+          - SERVICE_UNAVAILABLE
+          - GATEWAY_TIMEOUT
+        title:
+          type: string
+          description: Short, language-independent designation of the error.
+        detail:
+          type: string
+          description: Human-readable description of the specific error.
+        transactionId:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          description: >-
+            Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry, otherwise its
+            H2-Transaction-Id. Equal to the H2-Reference-Id response header.
+        responseOrigin:
+          type: string
+          enum: [Gateway, TargetSystem]
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      required: [code, title, transactionId]
+
+    ErrorDetail:
+      type: object
+      additionalProperties: true
+      description: Detail object describing individual validation or processing errors.
+      properties:
+        path: { type: string }
+        message: { type: string }
+
+  responses:
+    TargetSuccess:
+      description: The market message was successfully processed and answered by the addressed target system.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+          required: true
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+          required: true
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessResponse'
+          example:
+            status: ok
+            referenceNumber: ABC123456789
+            responseOrigin: TargetSystem
+            messageType: "${x-h2-message.type}"
+            messageSubType: "${x-h2-message.subType}"
+            messageVersion: "${x-h2-message.messageVersion}"
+            processedAt: '2026-03-22T15:47:45Z'
+
+    BadRequest:
+      description: >-
+        The HTTP request cannot be processed technically, for example due to missing required headers, invalid header
+        values, or syntactically malformed JSON body. If the request has no syntactically valid H2-Transaction-Id, the
+        response has no body and neither an H2-Transaction-Id nor an H2-Reference-Id header.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: BAD_REQUEST
+            title: Invalid request
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+            detail: One or more request headers violate the OpenAPI contract.
+            errors:
+              - path: /H2-Message-Receiver
+                message: Required header is missing.
+
+    Unauthorized:
+      description: Authentication is missing or invalid.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            title: Unauthorized
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    Forbidden:
+      description: >-
+        The request was not forwarded to the target system because the combination of sender, recipient, and business
+        process is not authorized.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_AUTHORIZED
+            title: Forbidden
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    RouteNotFound:
+      description: The requested technical route or endpoint is unknown.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: ROUTE_NOT_FOUND
+            title: Route not found
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    MethodNotAllowed:
+      description: The HTTP method is not allowed for this endpoint. The Allow header lists the permitted methods.
+      headers:
+        Allow:
+          $ref: '#/components/headers/Allow'
+          required: true
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: METHOD_NOT_ALLOWED
+            title: Method not allowed
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    TargetConflict:
+      description: >-
+        The market message was forwarded to the target system. The target system detected a business conflict with
+        existing data or the current processing state.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: MESSAGE_CONFLICT
+            title: Conflict
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: TargetSystem
+
+    UnsupportedMediaType:
+      description: The Content-Type of the request is not supported.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNSUPPORTED_MEDIA_TYPE
+            title: Unsupported media type
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+            detail: The request Content-Type must be application/json.
+
+    TargetUnprocessableEntity:
+      description: >-
+        The market message was forwarded to the target system. The target system detected a schema or business rule
+        violation in the message payload.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: MESSAGE_VALIDATION_FAILED
+            title: Validation failed
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: TargetSystem
+            detail: The message violates its JSON Schema.
+            errors:
+              - path: /message
+                message: Required property 'message' is missing.
+
+    TooManyRequests:
+      description: A technical protection or rate limiting rule has been triggered.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: TOO_MANY_REQUESTS
+            title: Too many requests
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    BadGateway:
+      description: A downstream component failed to provide a valid technical response.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: BAD_GATEWAY
+            title: Bad gateway
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    ServiceUnavailable:
+      description: The addressed target system or a downstream component is temporarily unavailable.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: SERVICE_UNAVAILABLE
+            title: Service unavailable
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway
+
+    GatewayTimeout:
+      description: No technical response was received from the addressed target system within the defined timeout window.
+      headers:
+        H2-Transaction-Id:
+          $ref: '#/components/headers/H2TransactionId'
+        H2-Reference-Id:
+          $ref: '#/components/headers/H2ReferenceId'
+        H2-API-Version:
+          $ref: '#/components/headers/H2APIVersion'
+          required: true
+        H2-Response-Origin:
+          $ref: '#/components/headers/H2ResponseOrigin'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: GATEWAY_TIMEOUT
+            title: Gateway timeout
+            transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+            responseOrigin: Gateway

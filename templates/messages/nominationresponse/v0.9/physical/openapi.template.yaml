@@ -1,0 +1,149 @@
+openapi: 3.1.0
+info:
+  title: H2 Physical Nomination Response API
+  version: 1.0.0
+  summary: API specification for transmitting business confirmations for physical nominations and renominations from hydrogen grid operators to the nominating market participant.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of physical nomination confirmations in the H2
+    market.
+
+    The physical nomination process provides the nominating balancing group responsible party with business
+    confirmations at different stages. After the nomination has been checked and any applicable capacity restrictions
+    have been applied, the responsible matching partner communicates the internally processed quantity that will enter
+    matching. After the matching process, the finally matched quantity is communicated as the effective nomination. The
+    nomination response therefore represents business confirmation within the nomination process and is separate from a
+    purely technical acknowledgement that the nomination message was received.
+x-h2-message:
+  id: physical-nominationresponse
+  businessName: Physical Nomination Response
+  type: NOMINATIONRESPONSE
+  subType: Physical
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: PhysicalNominationResponses
+  description: >-
+    HTTP operations for transmitting the business confirmation of physical nominations and renominations.
+security:
+- mtls: []
+paths:
+  /api/v1/physical-nominationresponses:
+    post:
+      tags:
+      - PhysicalNominationResponses
+      summary: Submit physical nomination confirmation
+      description: >-
+        With this operation, a hydrogen grid operator (WNB) transmits the business confirmation of a physical
+        nomination or renomination to the nominating balancing group responsible party. Depending on the stage of
+        the physical nomination process, the response can communicate the quantity processed by the matching partner
+        before matching—the quantity that will enter the matching process—or the finally confirmed quantity after
+        matching. Capacity-related reductions or other applicable nomination checks are reflected in the relevant
+        confirmed quantity. This business confirmation is distinct from the technical HTTP acknowledgement of the
+        original nomination submission.
+      operationId: submitPhysicalNominationResponses
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/PhysicalNominationResponseMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `physicalNominationResponseSubmission`.
+      schema:
+        type: string
+        enum:
+        - physicalNominationResponseSubmission
+      example: physicalNominationResponseSubmission
+  requestBodies:
+    PhysicalNominationResponseMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/physicalNominationResponse'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    physicalNominationResponse:
+      x-h2-generator:
+        inject: message-schema

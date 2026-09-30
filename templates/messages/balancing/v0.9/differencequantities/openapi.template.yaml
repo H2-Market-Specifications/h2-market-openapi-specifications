@@ -1,0 +1,149 @@
+openapi: 3.1.0
+info:
+  title: H2 Difference Quantities API
+  version: 1.0.0
+  summary: API specification for transmitting post-monthly balances and difference quantities from the hydrogen market area manager to the balancing group responsible party.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of difference quantities calculated by the hydrogen
+    market area manager (WMGV) as part of the post-monthly balancing mechanism in the H2 market.
+
+    A message refers to one balancing group (internal account) and its cluster. It contains the post-monthly
+    balancing-group balance (BGBalancePostmonthly), calculated after the delivery month using final measurement data and
+    final allocations, and the balance difference (BGBalanceDifference = post-monthly final balance minus closed
+    balance) for each hourly interval, which is used to determine the balancing group's post-monthly difference
+    quantity. The closed balancing-group balance (BGBalance) may also be included. The post-monthly process does not
+    retroactively change completed balancing results or the overall network status.
+x-h2-message:
+  id: differencequantities-balancing
+  businessName: Difference Quantities
+  type: BALANCING
+  subType: DifferenceQuantities
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: DifferenceQuantitiesBalancing
+  description: >-
+    HTTP operations for transmitting post-monthly balances and difference quantities calculated in the post-monthly
+    balancing mechanism.
+security:
+- mtls: []
+paths:
+  /api/v1/difference-quantities:
+    post:
+      tags:
+      - DifferenceQuantitiesBalancing
+      summary: Submit difference quantities
+      description: >-
+        With this operation, the hydrogen market area manager (WMGV) transmits the post-monthly balancing figures of
+        a balancing group to the balancing group responsible party as part of the post-monthly balancing mechanism.
+        The message contains the post-monthly balancing-group balance (BGBalancePostmonthly), calculated after the
+        delivery month using final measurement data and final allocations, and the resulting balance difference
+        (BGBalanceDifference) between the post-monthly balance and the closed balancing-group balance. The closed
+        balancing-group balance (BGBalance) may also be included.
+      operationId: submitDifferenceQuantitiesBalancing
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/DifferenceQuantitiesBalancingMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `differenceQuantitiesBalancingSubmission`.
+      schema:
+        type: string
+        enum:
+        - differenceQuantitiesBalancingSubmission
+      example: differenceQuantitiesBalancingSubmission
+  requestBodies:
+    DifferenceQuantitiesBalancingMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/differenceQuantitiesBalancing'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    differenceQuantitiesBalancing:
+      x-h2-generator:
+        inject: message-schema

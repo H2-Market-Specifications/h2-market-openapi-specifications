@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "h2-openapi-generator"
+version = "0.1.0"
+description = "Generate one OpenAPI YAML per H2 market message from catalog-driven JSON schemas."
+requires-python = ">=3.11"
+dependencies = [
+  "PyYAML>=6.0.1",
+  "jsonschema>=4.22.0",
+]
+
+[tool.setuptools]
+include-package-data = false
+packages = [
+  "h2_openapi_generator",
+  "mock_backend",
+  "mock_backend.validation",
+  "mock_backend._openapi",
+  "mock_backend._vendor",
+  "mock_backend._vendor.h2_message_validation",
+]
+
+[tool.setuptools.package-dir]
+h2_openapi_generator = "src/h2_openapi_generator"
+mock_backend = "mock_backend"
+"mock_backend.validation" = "mock_backend/validation"
+"mock_backend._openapi" = "dist/messages"
+"mock_backend._vendor" = "mock_backend/_vendor"
+"mock_backend._vendor.h2_message_validation" = "mock_backend/_vendor/h2_message_validation"
+
+[tool.setuptools.package-data]
+"mock_backend._openapi" = ["*/*/*/openapi.yaml"]
+"mock_backend._vendor.h2_message_validation" = ["SOURCE.json"]
+
+[tool.pytest.ini_options]
+# CI clones the source repository into _source/, whose own tests must not run here.
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+# Upstream code is linted in the source repository: its CI checkout and the generated validator bundle.
+extend-exclude = ["_source", "mock_backend/_vendor/h2_message_validation"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

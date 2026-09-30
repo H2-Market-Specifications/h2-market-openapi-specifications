@@ -1,0 +1,152 @@
+openapi: 3.1.0
+info:
+  title: H2 VTP Nomination Response API
+  version: 1.0.0
+  summary: API specification for transmitting VTP nomination and renomination confirmations from the hydrogen market area manager to the balancing group responsible party.
+  description: |-
+    This OpenAPI specification describes the HTTP-based transmission of VTP/VHP nomination confirmations from the
+    hydrogen market area manager (WMGV) to the balancing group responsible party in the H2 market.
+
+    For Double Sided Nominations, the response communicates the quantities confirmed after the hydrogen market area
+    manager has matched the nominations of the delivering and receiving balancing groups. Matching quantities are
+    confirmed, differing same-direction quantities are reduced using the lesser rule, and missing or directionally
+    inconsistent counterpart nominations result in zero. For Single Sided Nominations that are permitted by a defined
+    contractual or system process, no corresponding nomination from another BKV is required; the response confirms the
+    result of processing that SSN. A new nomination or renomination triggers a new result. The confirmed quantities form
+    the VTP allocation used in the affected balancing groups.
+x-h2-message:
+  id: vtp-nominationresponse
+  businessName: VTP Nomination Response
+  type: NOMINATIONRESPONSE
+  subType: VTP
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: VTPNominationResponses
+  description: >-
+    HTTP operations for transmitting confirmed VTP nomination and renomination results.
+security:
+- mtls: []
+paths:
+  /api/v1/vtp-nominationresponses:
+    post:
+      tags:
+      - VTPNominationResponses
+      summary: Submit VTP nomination confirmation
+      description: >-
+        With this operation, the hydrogen market area manager (WMGV) returns the business result of a VTP/VHP
+        nomination or renomination to the affected balancing group responsible party. For Double Sided Nominations,
+        the response contains the matching result: equal counter-nominations are confirmed in full, differing
+        same-direction quantities are reduced according to the lesser rule, and missing or directionally
+        inconsistent counter-nominations result in a confirmed quantity of zero for the affected interval. For a
+        permitted Single Sided Nomination, no counter-nomination is required and the confirmation reflects the
+        processing of that SSN under the applicable business process. The confirmed result remains applicable until
+        changed by a subsequent nomination or renomination and is used as the VTP allocation in the balancing-group
+        calculation.
+      operationId: submitVTPNominationResponses
+      parameters:
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2TransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2InitialTransactionId'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageSender'
+      - x-h2-generator:
+          inject: common-component
+          ref: '#/components/parameters/H2MessageReceiver'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/VTPNominationResponseMessage'
+      responses:
+        '200':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetSuccess'
+        '400':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadRequest'
+        '401':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Unauthorized'
+        '403':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/Forbidden'
+        '404':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/RouteNotFound'
+        '405':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetConflict'
+        '415':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TargetUnprocessableEntity'
+        '429':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/TooManyRequests'
+        '502':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/BadGateway'
+        '503':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          x-h2-generator:
+            inject: common-component
+            $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    mtls:
+      x-h2-generator:
+        inject: common-component
+        $ref: '#/components/securitySchemes/mtls'
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: >-
+        Identifies the business process to which this API call belongs. For this operation, the permitted value is
+        `vtpNominationResponseSubmission`.
+      schema:
+        type: string
+        enum:
+        - vtpNominationResponseSubmission
+      example: vtpNominationResponseSubmission
+  requestBodies:
+    VTPNominationResponseMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/vtpNominationResponse'
+          examples:
+            CatalogExamples:
+              x-h2-generator:
+                inject: all-valid-examples
+  schemas:
+    vtpNominationResponse:
+      x-h2-generator:
+        inject: message-schema

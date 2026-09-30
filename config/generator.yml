@@ -1,0 +1,12 @@
+source:
+  repository: H2-Market-Specifications/h2-market-message-specifications
+  ref: main
+  catalog: catalog/message-catalog.json
+
+generation:
+  templates_root: templates
+  output_root: dist
+  strict_templates: true
+  forbid_aggregated_paths: true
+  prune_unused_components: true
+  output_file_name: openapi.yaml

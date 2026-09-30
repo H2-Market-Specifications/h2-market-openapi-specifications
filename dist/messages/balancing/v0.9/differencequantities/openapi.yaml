@@ -1,0 +1,2105 @@
+openapi: 3.1.0
+info:
+  title: H2 Difference Quantities API
+  version: 1.0.0
+  summary: API specification for transmitting post-monthly balances and difference quantities from the hydrogen market area
+    manager to the balancing group responsible party.
+  description: 'This OpenAPI specification describes the HTTP-based transmission of difference quantities calculated by the
+    hydrogen
+
+    market area manager (WMGV) as part of the post-monthly balancing mechanism in the H2 market.
+
+
+    A message refers to one balancing group (internal account) and its cluster. It contains the post-monthly
+
+    balancing-group balance (BGBalancePostmonthly), calculated after the delivery month using final measurement data and
+
+    final allocations, and the balance difference (BGBalanceDifference = post-monthly final balance minus closed
+
+    balance) for each hourly interval, which is used to determine the balancing group''s post-monthly difference
+
+    quantity. The closed balancing-group balance (BGBalance) may also be included. The post-monthly process does not
+
+    retroactively change completed balancing results or the overall network status.'
+x-h2-message:
+  id: differencequantities-balancing
+  businessName: Difference Quantities
+  type: BALANCING
+  subType: DifferenceQuantities
+  messageVersion: '0.9'
+  lifecycle: consultation
+servers:
+- url: /
+  description: Local test environment
+tags:
+- name: DifferenceQuantitiesBalancing
+  description: HTTP operations for transmitting post-monthly balances and difference quantities calculated in the post-monthly
+    balancing mechanism.
+security:
+- mtls: []
+paths:
+  /api/v1/difference-quantities:
+    post:
+      tags:
+      - DifferenceQuantitiesBalancing
+      summary: Submit difference quantities
+      description: With this operation, the hydrogen market area manager (WMGV) transmits the post-monthly balancing figures
+        of a balancing group to the balancing group responsible party as part of the post-monthly balancing mechanism. The
+        message contains the post-monthly balancing-group balance (BGBalancePostmonthly), calculated after the delivery month
+        using final measurement data and final allocations, and the resulting balance difference (BGBalanceDifference) between
+        the post-monthly balance and the closed balancing-group balance. The closed balancing-group balance (BGBalance) may
+        also be included.
+      operationId: submitDifferenceQuantitiesBalancing
+      parameters:
+      - name: H2-Transaction-Id
+        in: header
+        required: true
+        description: Unique identifier of this HTTP request on the current communication leg, as UUID version 7. A new value
+          is generated for every request, including every retry.
+        schema:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+        example: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+      - name: H2-Initial-Transaction-Id
+        in: header
+        required: false
+        description: 'Sent only with a retry: the H2-Transaction-Id of the first request of the same communication leg, as
+          UUID version 7. A request that is not a retry must not contain this header. On a retry, this value is the effective
+          transaction ID of the request.'
+        schema:
+          type: string
+          format: uuid
+          pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+        example: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+      - name: H2-Message-Sender
+        in: header
+        required: true
+        description: Market partner identifier of the sending market partner.
+        schema:
+          type: string
+          pattern: ^\d{13}$
+        example: '9700123456789'
+      - name: H2-Message-Receiver
+        in: header
+        required: true
+        description: Market partner identifier of the recipient of the current communication leg, for example the Data Hub
+          on the leg from a market partner to the Data Hub. This is not necessarily the final business recipient of the message.
+        schema:
+          type: string
+          pattern: ^\d{13}$
+        example: '9700987654321'
+      - $ref: '#/components/parameters/H2BusinessProcess'
+      requestBody:
+        $ref: '#/components/requestBodies/DifferenceQuantitiesBalancingMessage'
+      responses:
+        '200':
+          description: The market message was successfully processed and answered by the addressed target system.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+              required: true
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+              required: true
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - ok
+                  referenceNumber:
+                    type: string
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - TargetSystem
+                  messageType:
+                    type: string
+                    enum:
+                    - BALANCING
+                  messageSubType:
+                    type: string
+                    enum:
+                    - DifferenceQuantities
+                  messageVersion:
+                    type: string
+                    enum:
+                    - '0.9'
+                  processedAt:
+                    type: string
+                    format: date-time
+                required:
+                - status
+                - responseOrigin
+              example:
+                status: ok
+                referenceNumber: ABC123456789
+                responseOrigin: TargetSystem
+                messageType: BALANCING
+                messageSubType: DifferenceQuantities
+                messageVersion: '0.9'
+                processedAt: '2026-03-22T15:47:45Z'
+        '400':
+          description: The HTTP request cannot be processed technically, for example due to missing required headers, invalid
+            header values, or syntactically malformed JSON body. If the request has no syntactically valid H2-Transaction-Id,
+            the response has no body and neither an H2-Transaction-Id nor an H2-Reference-Id header.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: BAD_REQUEST
+                title: Invalid request
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+                detail: One or more request headers violate the OpenAPI contract.
+                errors:
+                - path: /H2-Message-Receiver
+                  message: Required header is missing.
+        '401':
+          description: Authentication is missing or invalid.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: UNAUTHORIZED
+                title: Unauthorized
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '403':
+          description: The request was not forwarded to the target system because the combination of sender, recipient, and
+            business process is not authorized.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: NOT_AUTHORIZED
+                title: Forbidden
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '404':
+          description: The requested technical route or endpoint is unknown.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: ROUTE_NOT_FOUND
+                title: Route not found
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '405':
+          description: The HTTP method is not allowed for this endpoint. The Allow header lists the permitted methods.
+          headers:
+            Allow:
+              description: HTTP methods permitted for the requested resource.
+              schema:
+                type: string
+              example: POST
+              required: true
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: METHOD_NOT_ALLOWED
+                title: Method not allowed
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '409':
+          description: The market message was forwarded to the target system. The target system detected a business conflict
+            with existing data or the current processing state.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: MESSAGE_CONFLICT
+                title: Conflict
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: TargetSystem
+        '415':
+          description: The Content-Type of the request is not supported.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: UNSUPPORTED_MEDIA_TYPE
+                title: Unsupported media type
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+                detail: The request Content-Type must be application/json.
+        '422':
+          description: The market message was forwarded to the target system. The target system detected a schema or business
+            rule violation in the message payload.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: MESSAGE_VALIDATION_FAILED
+                title: Validation failed
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: TargetSystem
+                detail: The message violates its JSON Schema.
+                errors:
+                - path: /message
+                  message: Required property 'message' is missing.
+        '429':
+          description: A technical protection or rate limiting rule has been triggered.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+            Retry-After:
+              description: Recommended waiting time before retrying the request.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: TOO_MANY_REQUESTS
+                title: Too many requests
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '502':
+          description: A downstream component failed to provide a valid technical response.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: BAD_GATEWAY
+                title: Bad gateway
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '503':
+          description: The addressed target system or a downstream component is temporarily unavailable.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+            Retry-After:
+              description: Recommended waiting time before retrying the request.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: SERVICE_UNAVAILABLE
+                title: Service unavailable
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+        '504':
+          description: No technical response was received from the addressed target system within the defined timeout window.
+          headers:
+            H2-Transaction-Id:
+              description: Newly generated identifier of this response, as UUID version 7. Present in every response with
+                a JSON body.
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-Reference-Id:
+              description: 'Effective transaction ID of the answered request: its H2-Initial-Transaction-Id for a retry, otherwise
+                its H2-Transaction-Id. Present in every response with a JSON body.'
+              schema:
+                type: string
+                format: uuid
+                pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+            H2-API-Version:
+              description: Fully qualified version (`<MAJOR>.<MINOR>.<PATCH>`) of the answering API.
+              schema:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+              example: 1.0.0
+              required: true
+            H2-Response-Origin:
+              description: Origin of the response from the perspective of the interface.
+              schema:
+                type: string
+                enum:
+                - Gateway
+                - TargetSystem
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Error response for technical or business errors. `responseOrigin` and `errors` are extensions
+                  of this specification. A request without a syntactically valid H2-Transaction-Id is answered without a body.
+                properties:
+                  code:
+                    type: string
+                    description: Machine-readable error code.
+                    enum:
+                    - BAD_REQUEST
+                    - UNAUTHORIZED
+                    - NOT_AUTHORIZED
+                    - ROUTE_NOT_FOUND
+                    - METHOD_NOT_ALLOWED
+                    - MESSAGE_CONFLICT
+                    - UNSUPPORTED_MEDIA_TYPE
+                    - MESSAGE_VALIDATION_FAILED
+                    - TOO_MANY_REQUESTS
+                    - INTERNAL_ERROR
+                    - BAD_GATEWAY
+                    - SERVICE_UNAVAILABLE
+                    - GATEWAY_TIMEOUT
+                  title:
+                    type: string
+                    description: Short, language-independent designation of the error.
+                  detail:
+                    type: string
+                    description: Human-readable description of the specific error.
+                  transactionId:
+                    type: string
+                    format: uuid
+                    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+                    description: 'Effective transaction ID of the rejected request: its H2-Initial-Transaction-Id for a retry,
+                      otherwise its H2-Transaction-Id. Equal to the H2-Reference-Id response header.'
+                  responseOrigin:
+                    type: string
+                    enum:
+                    - Gateway
+                    - TargetSystem
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                      description: Detail object describing individual validation or processing errors.
+                      properties:
+                        path:
+                          type: string
+                        message:
+                          type: string
+                required:
+                - code
+                - title
+                - transactionId
+              example:
+                code: GATEWAY_TIMEOUT
+                title: Gateway timeout
+                transactionId: 019dbe80-9b35-773d-8f14-7c778c8d71b1
+                responseOrigin: Gateway
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: Mutual TLS authentication between communicating market partners.
+  parameters:
+    H2BusinessProcess:
+      name: H2-Business-Process
+      in: header
+      required: true
+      description: Identifies the business process to which this API call belongs. For this operation, the permitted value
+        is `differenceQuantitiesBalancingSubmission`.
+      schema:
+        type: string
+        enum:
+        - differenceQuantitiesBalancingSubmission
+      example: differenceQuantitiesBalancingSubmission
+  requestBodies:
+    DifferenceQuantitiesBalancingMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/differenceQuantitiesBalancing'
+          examples:
+            DIFFERENCEQUANTITIES_BALANCING.preliminary_valid:
+              summary: DIFFERENCEQUANTITIES_BALANCING.preliminary.valid
+              value:
+                message:
+                  type: BALANCING
+                  subType: DifferenceQuantities
+                  version: '0.9'
+                  documentNumber: DIFF-20280613-0001
+                  creationDateTime: '2028-07-14T16:25:00Z'
+                parties:
+                  sender:
+                    partnerCode: '9700600000000'
+                    partnerRole: HydrogenMarketAreaManager
+                  recipient:
+                    partnerCode: '9700100000000'
+                    partnerRole: BalancingGroupResponsibleParty
+                balancingData:
+                  clusterId: Cluster1
+                  internalAccount: THEHBH2500000000
+                  unit: kWh
+                  asOfDate: '2028-07-14T16:23:00Z'
+                  balancingFigures:
+                  - quantityType: BGBalance
+                    values:
+                    - periodStart: '2028-06-12T22:00:00Z'
+                      periodEnd: '2028-06-12T23:00:00Z'
+                      quantity: 5
+                      quality: closed
+                    - periodStart: '2028-06-12T23:00:00Z'
+                      periodEnd: '2028-06-13T00:00:00Z'
+                      quantity: 1
+                      quality: closed
+                    - periodStart: '2028-06-13T00:00:00Z'
+                      periodEnd: '2028-06-13T01:00:00Z'
+                      quantity: 10
+                      quality: closed
+                    - periodStart: '2028-06-13T01:00:00Z'
+                      periodEnd: '2028-06-13T02:00:00Z'
+                      quantity: -5
+                      quality: closed
+                    - periodStart: '2028-06-13T02:00:00Z'
+                      periodEnd: '2028-06-13T03:00:00Z'
+                      quantity: 12
+                      quality: closed
+                    - periodStart: '2028-06-13T03:00:00Z'
+                      periodEnd: '2028-06-13T04:00:00Z'
+                      quantity: 0
+                      quality: closed
+                    - periodStart: '2028-06-13T04:00:00Z'
+                      periodEnd: '2028-06-13T05:00:00Z'
+                      quantity: 8
+                      quality: closed
+                    - periodStart: '2028-06-13T05:00:00Z'
+                      periodEnd: '2028-06-13T06:00:00Z'
+                      quantity: -10
+                      quality: closed
+                    - periodStart: '2028-06-13T06:00:00Z'
+                      periodEnd: '2028-06-13T07:00:00Z'
+                      quantity: 5
+                      quality: closed
+                    - periodStart: '2028-06-13T07:00:00Z'
+                      periodEnd: '2028-06-13T08:00:00Z'
+                      quantity: 7
+                      quality: closed
+                    - periodStart: '2028-06-13T08:00:00Z'
+                      periodEnd: '2028-06-13T09:00:00Z'
+                      quantity: -3
+                      quality: closed
+                    - periodStart: '2028-06-13T09:00:00Z'
+                      periodEnd: '2028-06-13T10:00:00Z'
+                      quantity: 4
+                      quality: closed
+                    - periodStart: '2028-06-13T10:00:00Z'
+                      periodEnd: '2028-06-13T11:00:00Z'
+                      quantity: 0
+                      quality: closed
+                    - periodStart: '2028-06-13T11:00:00Z'
+                      periodEnd: '2028-06-13T12:00:00Z'
+                      quantity: 6
+                      quality: closed
+                    - periodStart: '2028-06-13T12:00:00Z'
+                      periodEnd: '2028-06-13T13:00:00Z'
+                      quantity: -8
+                      quality: closed
+                    - periodStart: '2028-06-13T13:00:00Z'
+                      periodEnd: '2028-06-13T14:00:00Z'
+                      quantity: 9
+                      quality: closed
+                    - periodStart: '2028-06-13T14:00:00Z'
+                      periodEnd: '2028-06-13T15:00:00Z'
+                      quantity: 2
+                      quality: closed
+                    - periodStart: '2028-06-13T15:00:00Z'
+                      periodEnd: '2028-06-13T16:00:00Z'
+                      quantity: -4
+                      quality: closed
+                    - periodStart: '2028-06-13T16:00:00Z'
+                      periodEnd: '2028-06-13T17:00:00Z'
+                      quantity: 11
+                      quality: closed
+                    - periodStart: '2028-06-13T17:00:00Z'
+                      periodEnd: '2028-06-13T18:00:00Z'
+                      quantity: -6
+                      quality: closed
+                    - periodStart: '2028-06-13T18:00:00Z'
+                      periodEnd: '2028-06-13T19:00:00Z'
+                      quantity: 3
+                      quality: closed
+                    - periodStart: '2028-06-13T19:00:00Z'
+                      periodEnd: '2028-06-13T20:00:00Z'
+                      quantity: 0
+                      quality: closed
+                    - periodStart: '2028-06-13T20:00:00Z'
+                      periodEnd: '2028-06-13T21:00:00Z'
+                      quantity: 7
+                      quality: closed
+                    - periodStart: '2028-06-13T21:00:00Z'
+                      periodEnd: '2028-06-13T22:00:00Z'
+                      quantity: -2
+                      quality: closed
+                  - quantityType: BGBalancePostmonthly
+                    values:
+                    - periodStart: '2028-06-12T22:00:00Z'
+                      periodEnd: '2028-06-12T23:00:00Z'
+                      quantity: 8
+                      quality: preliminary
+                    - periodStart: '2028-06-12T23:00:00Z'
+                      periodEnd: '2028-06-13T00:00:00Z'
+                      quantity: 1
+                      quality: preliminary
+                    - periodStart: '2028-06-13T00:00:00Z'
+                      periodEnd: '2028-06-13T01:00:00Z'
+                      quantity: 10
+                      quality: preliminary
+                    - periodStart: '2028-06-13T01:00:00Z'
+                      periodEnd: '2028-06-13T02:00:00Z'
+                      quantity: -5
+                      quality: preliminary
+                    - periodStart: '2028-06-13T02:00:00Z'
+                      periodEnd: '2028-06-13T03:00:00Z'
+                      quantity: 15
+                      quality: preliminary
+                    - periodStart: '2028-06-13T03:00:00Z'
+                      periodEnd: '2028-06-13T04:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T04:00:00Z'
+                      periodEnd: '2028-06-13T05:00:00Z'
+                      quantity: 6
+                      quality: preliminary
+                    - periodStart: '2028-06-13T05:00:00Z'
+                      periodEnd: '2028-06-13T06:00:00Z'
+                      quantity: -10
+                      quality: preliminary
+                    - periodStart: '2028-06-13T06:00:00Z'
+                      periodEnd: '2028-06-13T07:00:00Z'
+                      quantity: 5
+                      quality: preliminary
+                    - periodStart: '2028-06-13T07:00:00Z'
+                      periodEnd: '2028-06-13T08:00:00Z'
+                      quantity: 9
+                      quality: preliminary
+                    - periodStart: '2028-06-13T08:00:00Z'
+                      periodEnd: '2028-06-13T09:00:00Z'
+                      quantity: -3
+                      quality: preliminary
+                    - periodStart: '2028-06-13T09:00:00Z'
+                      periodEnd: '2028-06-13T10:00:00Z'
+                      quantity: 4
+                      quality: preliminary
+                    - periodStart: '2028-06-13T10:00:00Z'
+                      periodEnd: '2028-06-13T11:00:00Z'
+                      quantity: 2
+                      quality: preliminary
+                    - periodStart: '2028-06-13T11:00:00Z'
+                      periodEnd: '2028-06-13T12:00:00Z'
+                      quantity: 6
+                      quality: preliminary
+                    - periodStart: '2028-06-13T12:00:00Z'
+                      periodEnd: '2028-06-13T13:00:00Z'
+                      quantity: -5
+                      quality: preliminary
+                    - periodStart: '2028-06-13T13:00:00Z'
+                      periodEnd: '2028-06-13T14:00:00Z'
+                      quantity: 9
+                      quality: preliminary
+                    - periodStart: '2028-06-13T14:00:00Z'
+                      periodEnd: '2028-06-13T15:00:00Z'
+                      quantity: 2
+                      quality: preliminary
+                    - periodStart: '2028-06-13T15:00:00Z'
+                      periodEnd: '2028-06-13T16:00:00Z'
+                      quantity: -7
+                      quality: preliminary
+                    - periodStart: '2028-06-13T16:00:00Z'
+                      periodEnd: '2028-06-13T17:00:00Z'
+                      quantity: 11
+                      quality: preliminary
+                    - periodStart: '2028-06-13T17:00:00Z'
+                      periodEnd: '2028-06-13T18:00:00Z'
+                      quantity: -4
+                      quality: preliminary
+                    - periodStart: '2028-06-13T18:00:00Z'
+                      periodEnd: '2028-06-13T19:00:00Z'
+                      quantity: 3
+                      quality: preliminary
+                    - periodStart: '2028-06-13T19:00:00Z'
+                      periodEnd: '2028-06-13T20:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T20:00:00Z'
+                      periodEnd: '2028-06-13T21:00:00Z'
+                      quantity: 10
+                      quality: preliminary
+                    - periodStart: '2028-06-13T21:00:00Z'
+                      periodEnd: '2028-06-13T22:00:00Z'
+                      quantity: -2
+                      quality: preliminary
+                  - quantityType: BGBalanceDifference
+                    values:
+                    - periodStart: '2028-06-12T22:00:00Z'
+                      periodEnd: '2028-06-12T23:00:00Z'
+                      quantity: 3
+                      quality: preliminary
+                    - periodStart: '2028-06-12T23:00:00Z'
+                      periodEnd: '2028-06-13T00:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T00:00:00Z'
+                      periodEnd: '2028-06-13T01:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T01:00:00Z'
+                      periodEnd: '2028-06-13T02:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T02:00:00Z'
+                      periodEnd: '2028-06-13T03:00:00Z'
+                      quantity: 3
+                      quality: preliminary
+                    - periodStart: '2028-06-13T03:00:00Z'
+                      periodEnd: '2028-06-13T04:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T04:00:00Z'
+                      periodEnd: '2028-06-13T05:00:00Z'
+                      quantity: -2
+                      quality: preliminary
+                    - periodStart: '2028-06-13T05:00:00Z'
+                      periodEnd: '2028-06-13T06:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T06:00:00Z'
+                      periodEnd: '2028-06-13T07:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T07:00:00Z'
+                      periodEnd: '2028-06-13T08:00:00Z'
+                      quantity: 2
+                      quality: preliminary
+                    - periodStart: '2028-06-13T08:00:00Z'
+                      periodEnd: '2028-06-13T09:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T09:00:00Z'
+                      periodEnd: '2028-06-13T10:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T10:00:00Z'
+                      periodEnd: '2028-06-13T11:00:00Z'
+                      quantity: 2
+                      quality: preliminary
+                    - periodStart: '2028-06-13T11:00:00Z'
+                      periodEnd: '2028-06-13T12:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T12:00:00Z'
+                      periodEnd: '2028-06-13T13:00:00Z'
+                      quantity: 3
+                      quality: preliminary
+                    - periodStart: '2028-06-13T13:00:00Z'
+                      periodEnd: '2028-06-13T14:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T14:00:00Z'
+                      periodEnd: '2028-06-13T15:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T15:00:00Z'
+                      periodEnd: '2028-06-13T16:00:00Z'
+                      quantity: -3
+                      quality: preliminary
+                    - periodStart: '2028-06-13T16:00:00Z'
+                      periodEnd: '2028-06-13T17:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T17:00:00Z'
+                      periodEnd: '2028-06-13T18:00:00Z'
+                      quantity: 2
+                      quality: preliminary
+                    - periodStart: '2028-06-13T18:00:00Z'
+                      periodEnd: '2028-06-13T19:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T19:00:00Z'
+                      periodEnd: '2028-06-13T20:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+                    - periodStart: '2028-06-13T20:00:00Z'
+                      periodEnd: '2028-06-13T21:00:00Z'
+                      quantity: 3
+                      quality: preliminary
+                    - periodStart: '2028-06-13T21:00:00Z'
+                      periodEnd: '2028-06-13T22:00:00Z'
+                      quantity: 0
+                      quality: preliminary
+  schemas:
+    differenceQuantitiesBalancing:
+      x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/differencequantities/differencequantities-balancing-message.schema.json
+      title: h2DifferenceQuantitiesBalancingMessage
+      description: Message for transmitting balancing quantities related to the post-monthly balancing mechanism, including
+        closed balances, final balances and balance differences.
+      allOf:
+      - x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/balancing-message-base.schema.json
+        title: h2BalancingMessage
+        description: Base schema for transmitting balancing figures from the Hydrogen Market Area Manager to a Balancing Group
+          Responsible Party.
+        type: object
+        additionalProperties: false
+        required:
+        - message
+        - parties
+        - balancingData
+        properties:
+          message:
+            x-json-schema-id: https://h2-market.example/message-specifications/schemas/_shared/v0.9/message.schema.json
+            title: message
+            description: Reusable message metadata block for H2 market messages. Concrete root message schemas constrain type,
+              subType and version inline without creating duplicate message schemas per message type.
+            type: object
+            additionalProperties: false
+            required:
+            - type
+            - subType
+            - version
+            - documentNumber
+            - creationDateTime
+            properties:
+              type:
+                type: string
+                minLength: 1
+                maxLength: 64
+                pattern: ^[A-Z][A-Z0-9_]*$
+                description: Message category code, for example MEASUREMENT.
+                enum:
+                - BALANCING
+              subType:
+                type: string
+                minLength: 1
+                maxLength: 64
+                pattern: ^[A-Za-z][A-Za-z0-9]*$
+                description: Message subtype, for example Preliminary or Final.
+              version:
+                type: string
+                pattern: ^[0-9]+\.[0-9]+$
+                description: Message format version.
+                enum:
+                - '0.9'
+              documentNumber:
+                type: string
+                minLength: 1
+                maxLength: 64
+                pattern: ^[A-Za-z0-9._-]+$
+                description: Sender-specific business reference for this message.
+              creationDateTime:
+                type: string
+                format: date-time
+                pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+                description: UTC timestamp of message creation.
+          parties:
+            x-json-schema-id: https://h2-market.example/message-specifications/schemas/_shared/v0.9/parties.schema.json
+            title: parties
+            description: Sender and recipient of the message.
+            type: object
+            additionalProperties: false
+            required:
+            - sender
+            - recipient
+            properties:
+              sender:
+                x-json-schema-id: https://h2-market.example/message-specifications/schemas/_shared/v0.9/market-partner.schema.json
+                title: marketPartner
+                description: Market partner participating in the message exchange.
+                type: object
+                additionalProperties: false
+                required:
+                - partnerCode
+                - partnerRole
+                properties:
+                  partnerCode:
+                    type: string
+                    pattern: ^[0-9]{13}$
+                    description: Market partner identifier.
+                  partnerRole:
+                    type: string
+                    enum:
+                    - HydrogenMarketAreaManager
+                    description: Market role of the partner.
+                    x-enumDescriptions:
+                      HydrogenGridOperator: Operator of a hydrogen transport or distribution network. The Hydrogen Grid Operator
+                        provides network access and capacity, operates the hydrogen network and supplies measurement and network
+                        data for balancing and market access processes.
+                      HydrogenMarketAreaManager: Market Area Manager responsible for central balancing and settlement functions
+                        in the hydrogen market area, including continuous balancing, calculation and provision of balancing
+                        group balances, operation of the Virtual Trading Point and operation of the Data Hub.
+                      BalancingGroupResponsibleParty: Market participant responsible towards the Hydrogen Market Area Manager
+                        for the management and balancing of a balancing group, including the submission of nominations and
+                        quantity declarations and the settlement of difference quantities.
+                      TransportCustomer: Market participant that requests hydrogen transport, concludes entry and exit contracts,
+                        books network capacity and transports hydrogen into or out of the hydrogen network.
+                      DataHub: Central technical communication and data exchange platform for market communication between
+                        the participating market roles.
+              recipient:
+                x-json-schema-id: https://h2-market.example/message-specifications/schemas/_shared/v0.9/market-partner.schema.json
+                title: marketPartner
+                description: Market partner participating in the message exchange.
+                type: object
+                additionalProperties: false
+                required:
+                - partnerCode
+                - partnerRole
+                properties:
+                  partnerCode:
+                    type: string
+                    pattern: ^[0-9]{13}$
+                    description: Market partner identifier.
+                  partnerRole:
+                    type: string
+                    enum:
+                    - BalancingGroupResponsibleParty
+                    description: Market role of the partner.
+                    x-enumDescriptions:
+                      HydrogenGridOperator: Operator of a hydrogen transport or distribution network. The Hydrogen Grid Operator
+                        provides network access and capacity, operates the hydrogen network and supplies measurement and network
+                        data for balancing and market access processes.
+                      HydrogenMarketAreaManager: Market Area Manager responsible for central balancing and settlement functions
+                        in the hydrogen market area, including continuous balancing, calculation and provision of balancing
+                        group balances, operation of the Virtual Trading Point and operation of the Data Hub.
+                      BalancingGroupResponsibleParty: Market participant responsible towards the Hydrogen Market Area Manager
+                        for the management and balancing of a balancing group, including the submission of nominations and
+                        quantity declarations and the settlement of difference quantities.
+                      TransportCustomer: Market participant that requests hydrogen transport, concludes entry and exit contracts,
+                        books network capacity and transports hydrogen into or out of the hydrogen network.
+                      DataHub: Central technical communication and data exchange platform for market communication between
+                        the participating market roles.
+          balancingData:
+            x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/components/balancing-data.schema.json
+            title: balancingData
+            description: Balancing data for one cluster and one internal balancing group. It contains the data snapshot timestamp
+              and one or more balancing number time series.
+            type: object
+            additionalProperties: false
+            required:
+            - clusterId
+            - internalAccount
+            - unit
+            - asOfDate
+            - balancingFigures
+            properties:
+              clusterId:
+                type: string
+                minLength: 1
+                maxLength: 64
+                description: Unique identifier (name or ID) of the cluster to which the balancing group belongs.
+              internalAccount:
+                type: string
+                minLength: 1
+                description: Internal balancing group identifier for which the balancing figures are provided.
+              unit:
+                type: string
+                description: Unit of all balancing quantities. This format uses kWh.
+                enum:
+                - kWh
+              asOfDate:
+                type: string
+                format: date-time
+                pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+                description: UTC timestamp identifying the data snapshot used to create this message. It indicates the point
+                  in time up to which data was retrieved from or available in the source system. Data received or processed
+                  after this timestamp is not included in this message.
+              balancingFigures:
+                type: array
+                minItems: 1
+                description: Balancing number time series for the specified cluster, internal account and data snapshot.
+                items:
+                  x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/components/balancing-number.schema.json
+                  title: balancingNumber
+                  description: Time series for one balancing figure.
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - quantityType
+                  - values
+                  properties:
+                    quantityType:
+                      type: string
+                      enum:
+                      - BGBalance
+                      - BGBalanceDifference
+                      - BGBalancePostmonthly
+                      - BGBalanceCumulative
+                      - BGBalanceCumulativeExternal
+                      - OverallNetworkStatus
+                      description: Type of balancing figure.
+                      x-enumDescriptions:
+                        BGBalance: Balancing group balance for the explicitly specified interval, calculated as Entry minus
+                          Exit. A positive value indicates that Entry quantities exceed Exit quantities; a negative value
+                          indicates that Exit quantities exceed Entry quantities.
+                        BGBalanceDifference: Difference between the closed balancing group balance and the final balancing
+                          group balance for the specified hourly interval. The difference is calculated as final BGBalance
+                          minus closed BGBalance and is used to determine the balancing group's post-monthly difference quantity.
+                        BGBalancePostmonthly: Post-monthly balancing group balance calculated on an hourly basis using final
+                          measurement data and final allocations. It replaces the previously determined closed balancing group
+                          balance for the relevant interval when determining post-monthly difference quantities. The previously
+                          completed balancing group balancing and the Overall Network Status are not changed retroactively.
+                        BGBalanceCumulative: Cumulative balancing group balance of the internal balancing group. It is calculated
+                          by continuously adding the BGBalance of the current interval to the previously accumulated balance
+                          and is maintained from the beginning of the balancing group's existence without a time-based reset.
+                        BGBalanceCumulativeExternal: Cumulative balancing group balance of an externally referenced balancing
+                          group that is contractually connected to the internal balancing group for a cooperative balancing
+                          process.
+                        OverallNetworkStatus: Overall cumulative balancing status of the relevant cluster. It represents the
+                          aggregated cumulative imbalance of the balancing groups within the cluster and is used to assess
+                          the overall balancing situation and support the procurement of balancing energy.
+                    values:
+                      type: array
+                      minItems: 1
+                      description: Chronologically ordered balancing values for the selected quantity type.
+                      items:
+                        x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/components/balancing-period-value.schema.json
+                        title: balancingPeriodValue
+                        description: One balancing quantity for an explicitly bounded UTC time interval.
+                        type: object
+                        additionalProperties: false
+                        required:
+                        - periodStart
+                        - periodEnd
+                        - quantity
+                        - quality
+                        properties:
+                          periodStart:
+                            type: string
+                            format: date-time
+                            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+                            description: UTC timestamp marking the inclusive start of the balancing interval.
+                          periodEnd:
+                            type: string
+                            format: date-time
+                            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+                            description: UTC timestamp marking the exclusive end of the balancing interval.
+                          quantity:
+                            type: number
+                            description: Balancing quantity for the interval in the unit defined by balancingData.unit. Positive
+                              and negative values are permitted.
+                          quality:
+                            type: string
+                            enum:
+                            - preliminary
+                            - prognosis
+                            - closed
+                            - final
+                            description: Quality or processing status of the balancing quantity.
+                            x-enumDescriptions:
+                              preliminary: The value is based on preliminary data and may still be updated within the applicable
+                                balancing process.
+                              prognosis: The value is a forecast for a future interval or a future balancing state.
+                              closed: The value has been fixed after completion of the relevant balancing period and is no
+                                longer changed within the continuous balancing process.
+                              final: The value is final and is based on final data or final allocations.
+                          helperCauser:
+                            type: string
+                            enum:
+                            - Helper
+                            - Causer
+                            description: Designation of the balancing group as Helper or Causer for the relevant cumulative
+                              balancing value.
+                            x-enumDescriptions:
+                              Helper: The balancing group contributes positively to the relevant balancing situation according
+                                to the applicable Helper/Causer assessment.
+                              Causer: The balancing group contributes negatively to the relevant balancing situation according
+                                to the applicable Helper/Causer assessment.
+                  allOf:
+                  - if:
+                      properties:
+                        quantityType:
+                          enum:
+                          - BGBalanceCumulative
+                          - BGBalanceCumulativeExternal
+                      required:
+                      - quantityType
+                    then:
+                      properties:
+                        values:
+                          items:
+                            required:
+                            - helperCauser
+                  - if:
+                      properties:
+                        quantityType:
+                          enum:
+                          - BGBalance
+                          - BGBalanceDifference
+                          - OverallNetworkStatus
+                      required:
+                      - quantityType
+                    then:
+                      properties:
+                        values:
+                          items:
+                            properties:
+                              helperCauser: false
+      - type: object
+        properties:
+          message:
+            type: object
+            properties:
+              subType:
+                enum:
+                - DifferenceQuantities
+          balancingData:
+            type: object
+            properties:
+              unit:
+                type: string
+                description: Unit of the balancing quantities.
+              balancingFigures:
+                type: array
+                minItems: 1
+                description: Balancing quantity time series related to the post-monthly balancing mechanism.
+                items:
+                  x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/components/balancing-number.schema.json
+                  title: balancingNumber
+                  description: Time series for one balancing figure.
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - quantityType
+                  - values
+                  properties:
+                    quantityType:
+                      type: string
+                      enum:
+                      - BGBalance
+                      - BGBalanceDifference
+                      - BGBalancePostmonthly
+                      - BGBalanceCumulative
+                      - BGBalanceCumulativeExternal
+                      - OverallNetworkStatus
+                      description: Type of balancing figure.
+                      x-enumDescriptions:
+                        BGBalance: Balancing group balance for the explicitly specified interval, calculated as Entry minus
+                          Exit. A positive value indicates that Entry quantities exceed Exit quantities; a negative value
+                          indicates that Exit quantities exceed Entry quantities.
+                        BGBalanceDifference: Difference between the closed balancing group balance and the final balancing
+                          group balance for the specified hourly interval. The difference is calculated as final BGBalance
+                          minus closed BGBalance and is used to determine the balancing group's post-monthly difference quantity.
+                        BGBalancePostmonthly: Post-monthly balancing group balance calculated on an hourly basis using final
+                          measurement data and final allocations. It replaces the previously determined closed balancing group
+                          balance for the relevant interval when determining post-monthly difference quantities. The previously
+                          completed balancing group balancing and the Overall Network Status are not changed retroactively.
+                        BGBalanceCumulative: Cumulative balancing group balance of the internal balancing group. It is calculated
+                          by continuously adding the BGBalance of the current interval to the previously accumulated balance
+                          and is maintained from the beginning of the balancing group's existence without a time-based reset.
+                        BGBalanceCumulativeExternal: Cumulative balancing group balance of an externally referenced balancing
+                          group that is contractually connected to the internal balancing group for a cooperative balancing
+                          process.
+                        OverallNetworkStatus: Overall cumulative balancing status of the relevant cluster. It represents the
+                          aggregated cumulative imbalance of the balancing groups within the cluster and is used to assess
+                          the overall balancing situation and support the procurement of balancing energy.
+                    values:
+                      type: array
+                      minItems: 1
+                      description: Chronologically ordered balancing values for the selected quantity type.
+                      items:
+                        x-json-schema-id: https://h2-market.example/message-specifications/schemas/messages/balancing/v0.9/components/balancing-period-value.schema.json
+                        title: balancingPeriodValue
+                        description: One balancing quantity for an explicitly bounded UTC time interval.
+                        type: object
+                        additionalProperties: false
+                        required:
+                        - periodStart
+                        - periodEnd
+                        - quantity
+                        - quality
+                        properties:
+                          periodStart:
+                            type: string
+                            format: date-time
+                            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+                            description: UTC timestamp marking the inclusive start of the balancing interval.
+                          periodEnd:
+                            type: string
+                            format: date-time
+                            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
+                            description: UTC timestamp marking the exclusive end of the balancing interval.
+                          quantity:
+                            type: number
+                            description: Balancing quantity for the interval in the unit defined by balancingData.unit. Positive
+                              and negative values are permitted.
+                          quality:
+                            type: string
+                            enum:
+                            - preliminary
+                            - prognosis
+                            - closed
+                            - final
+                            description: Quality or processing status of the balancing quantity.
+                            x-enumDescriptions:
+                              preliminary: The value is based on preliminary data and may still be updated within the applicable
+                                balancing process.
+                              prognosis: The value is a forecast for a future interval or a future balancing state.
+                              closed: The value has been fixed after completion of the relevant balancing period and is no
+                                longer changed within the continuous balancing process.
+                              final: The value is final and is based on final data or final allocations.
+                          helperCauser:
+                            type: string
+                            enum:
+                            - Helper
+                            - Causer
+                            description: Designation of the balancing group as Helper or Causer for the relevant cumulative
+                              balancing value.
+                            x-enumDescriptions:
+                              Helper: The balancing group contributes positively to the relevant balancing situation according
+                                to the applicable Helper/Causer assessment.
+                              Causer: The balancing group contributes negatively to the relevant balancing situation according
+                                to the applicable Helper/Causer assessment.
+                  allOf:
+                  - if:
+                      properties:
+                        quantityType:
+                          enum:
+                          - BGBalanceCumulative
+                          - BGBalanceCumulativeExternal
+                      required:
+                      - quantityType
+                    then:
+                      properties:
+                        values:
+                          items:
+                            required:
+                            - helperCauser
+                  - if:
+                      properties:
+                        quantityType:
+                          enum:
+                          - BGBalance
+                          - BGBalanceDifference
+                          - OverallNetworkStatus
+                      required:
+                      - quantityType
+                    then:
+                      properties:
+                        values:
+                          items:
+                            properties:
+                              helperCauser: false
