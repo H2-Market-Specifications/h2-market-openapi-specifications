@@ -1,5 +1,9 @@
 # H2 Market OpenAPI Specifications
 
+## OpenAPI-Spezifikationen für H₂-Marktnachrichten (Deutsch)
+
+Dieses Repository stellt OpenAPI-Beschreibungen für die Marktnachrichten der Wasserstoffmarktkommunikation (H₂) in Deutschland bereit. Für die Nachrichtenformate werden eigenständige `openapi.yaml`-Dateien aus den JSON-Schemas und Spezifikationen des zugehörigen H₂-Markt-Nachrichten-Repositories erzeugt. Die OpenAPI-Dateien unterstützen Softwareanbieter und Entwickler bei der technischen Anbindung und Implementierung von H₂-Markt-APIs.
+
 This repository generates **a standalone `openapi.yaml` for each H2 market message** defined in the
 [`H2-Market-Specifications/h2-market-message-specifications`](https://github.com/H2-Market-Specifications/h2-market-message-specifications) repository.
 
